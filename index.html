@@ -379,13 +379,28 @@
 
     // Redirect to Stripe payment link
     document.getElementById("pay-now").addEventListener("click", () => {
-      window.location.href = "https://buy.stripe.com/test_dR66sqbkndxg1Uc6oo";
+      window.location.href = "https://buy.stripe.com/fZe8yM74h3IE1AA001";
     });
 
     // Example: Trigger the paywall when accessing a restricted feature
     document.getElementById("entry-form").addEventListener("submit", (event) => {
       event.preventDefault();
       showPaywall(); // Show the paywall modal
+    });
+  </script>
+
+  <script>
+    // Redirect to Stripe payment link and then to the live webpage after payment
+    document.getElementById("pay-now").addEventListener("click", () => {
+      // Redirect to Stripe payment link
+      window.location.href = "https://buy.stripe.com/fZe8yM74h3IE1AA001";
+
+      // After successful payment, redirect to the live webpage
+      // This part assumes Stripe redirects back to your site after payment
+      // You can use Stripe's success URL feature for this
+      setTimeout(() => {
+        window.location.href = "https://forecastspark.vercel.app";
+      }, 5000); // Adjust the delay as needed
     });
   </script>
 
