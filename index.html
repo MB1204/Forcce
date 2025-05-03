@@ -444,6 +444,43 @@
     });
   </script>
 
+  <script>
+    // Check if the user has already paid
+    function hasPaid() {
+      return localStorage.getItem("paymentCompleted") === "true";
+    }
+
+    // Mark payment as completed
+    function markPaymentAsCompleted() {
+      localStorage.setItem("paymentCompleted", "true");
+    }
+
+    // Check for the paymentCompleted query parameter
+    function checkPaymentStatusFromURL() {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get("paymentCompleted") === "true") {
+        markPaymentAsCompleted();
+        alert("Payment confirmed! You can now access all features.");
+      }
+    }
+
+    // Run the check when the page loads
+    checkPaymentStatusFromURL();
+
+    // Example: Trigger the paywall when accessing a restricted feature
+    document.getElementById("entry-form").addEventListener("submit", (event) => {
+      event.preventDefault();
+
+      if (hasPaid()) {
+        // Allow form submission if the user has already paid
+        alert("Thank you for your payment! You can now access this feature.");
+      } else {
+        // Show the paywall modal if the user hasn't paid
+        showPaywall();
+      }
+    });
+  </script>
+
   <!-- Footer -->
   <footer>
     <p>&copy; 2024 Synaptix. All rights reserved.</p>
