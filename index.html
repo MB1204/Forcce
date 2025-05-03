@@ -461,6 +461,8 @@
       if (urlParams.get("paymentCompleted") === "true") {
         markPaymentAsCompleted();
         alert("Payment confirmed! You can now access all features.");
+        // Remove the query parameter from the URL
+        window.history.replaceState({}, document.title, window.location.pathname);
       }
     }
 
