@@ -239,154 +239,157 @@
   </div>
 
   <script>
-    const OPENROUTER_API_KEY = "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"; // Replace with your key
-    const data = []; // Initialize the data array
+  const OPENROUTER_API_KEY = "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"; // API key
+  const data = []; // Initialize the data array
 
-    // Initialize the Chart.js instance
-    const ctx = document.getElementById("revenueChart").getContext("2d");
-    const revenueChart = new Chart(ctx, {
-      type: "line", // Line chart
-      data: {
-        labels: [], // Dates will go here
-        datasets: [
-          {
-            label: "Revenue",
-            data: [], // Revenue values will go here
-            borderColor: "rgba(75, 192, 192, 1)",
-            backgroundColor: "rgba(75, 192, 192, 0.2)",
-            borderWidth: 2,
-            tension: 0.4, // Smooth curves
-          },
-        ],
+  // Initialize the Chart.js instance
+  const ctx = document.getElementById("revenueChart").getContext("2d");
+  const revenueChart = new Chart(ctx, {
+    type: "line", // Line chart
+    data: {
+      labels: [], // Dates will go here
+      datasets: [
+        {
+          label: "Revenue",
+          data: [], // Revenue values will go here
+          borderColor: "rgba(75, 192, 192, 1)",
+          backgroundColor: "rgba(75, 192, 192, 0.2)",
+          borderWidth: 2,
+          tension: 0.4, // Smooth curves
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          display: true,
+        },
       },
-      options: {
-        responsive: true,
-        plugins: {
-          legend: {
+      scales: {
+        x: {
+          title: {
             display: true,
+            text: "Date",
           },
         },
-        scales: {
-          x: {
-            title: {
-              display: true,
-              text: "Date",
-            },
+        y: {
+          title: {
+            display: true,
+            text: "Revenue ($)",
           },
-          y: {
-            title: {
-              display: true,
-              text: "Revenue ($)",
-            },
-            beginAtZero: true,
-          },
+          beginAtZero: true,
         },
       },
-    });
+    },
+  });
 
-    function updateChart() {
-      // Update the chart with new data
-      revenueChart.data.labels = data.map((entry) => entry.date); // Update labels with dates
-      revenueChart.data.datasets[0].data = data.map((entry) => entry.revenue); // Update dataset with revenue
-      revenueChart.update(); // Refresh the chart
-    }
+  function updateChart() {
+    // Update the chart with new data
+    revenueChart.data.labels = data.map((entry) => entry.date); // Update labels with dates
+    revenueChart.data.datasets[0].data = data.map((entry) => entry.revenue); // Update dataset with revenue
+    revenueChart.update(); // Refresh the chart
+  }
 
-    async function getForecastFromAI(recentEntries) {
-      const messageContent = `Here are past revenue events: ${recentEntries
-        .map((e) => `${e.date} - ${e.eventDesc} - $${e.revenue}`)
-        .join(
-          ", "
-        )}. Given this list of past service pushes with dates and revenue, analyze patterns and forecast the next high-opportunity window to promote services. Focus on timing (day/week/month) and give a short, confident prediction based on clear trends.
-`;
+  async function getForecastFromAI(recentEntries) {
+    const messageContent = `Here are past revenue events: ${recentEntries
+      .map((e) => `${e.date} - ${e.eventDesc} - $${e.revenue}`)
+      .join(
+        ", "
+      )}. Given this list of past service pushes with dates and revenue, analyze patterns and forecast the next high-opportunity window to promote services. Focus on timing (day/week/month) and give a short, confident prediction based on clear trends.`;
 
-      try {
-        const response = await fetch(
-          "https://openrouter.ai/api/v1/chat/completions",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+    try {
+      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: "deepseek/deepseek-prover-v2:free", // Updated model
+          messages: [
+            {
+              role: "user",
+              content: messageContent, // Use the generated message content
             },
-            body: JSON.stringify({
-              model: "nvidia/llama-3.3-nemotron-super-49b-v1:free",
-              messages: [{ role: "user", content: messageContent }],
-            }),
-          }
-        );
+          ],
+        }),
+      });
 
-        if (!response.ok) {
-          throw new Error(`API request failed with status ${response.status}`);
+      if (!response.ok) {
+        throw new Error(`API request failed with status ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log("API Response:", data); // Debugging log
+      return data?.choices?.[0]?.message?.content || "No prediction returned.";
+    } catch (error) {
+      console.error("Error fetching forecast:", error);
+      return "Error fetching prediction.";
+    }
+  }
+
+  async function updateForecast() {
+    if (data.length < 5) {
+      document.getElementById("predicted-surges").innerHTML =
+        "Not enough data for prediction.";
+      return;
+    }
+
+    const recentEntries = data.slice(-7); // Last 5–7 entries
+    const forecastText = await getForecastFromAI(recentEntries);
+
+    // Format the response for better readability
+    const formattedForecast = forecastText
+      .split("\n") // Split the response into lines
+      .map((line) => {
+        if (line.startsWith("**") && line.endsWith("**")) {
+          // If the line starts and ends with **, style it as a box
+          const content = line.slice(2, -2).trim(); // Remove the ** markers
+          return `<div class="styled-box">${content}</div>`;
+        } else if (line.startsWith("*")) {
+          // If the line starts with an asterisk, make it a header
+          return `<h3>${line.slice(1).trim()}</h3>`;
+        } else {
+          // Otherwise, wrap it in a paragraph
+          return `<p>${line.trim()}</p>`;
         }
+      })
+      .join(""); // Join the formatted lines back into a single string
 
-        const data = await response.json();
-        return (
-          data?.choices?.[0]?.message?.content || "No prediction returned."
-        );
-      } catch (error) {
-        console.error("Error fetching forecast:", error);
-        return "Error fetching prediction.";
-      }
+    // Display the formatted prediction in the UI
+    document.getElementById("predicted-surges").innerHTML = formattedForecast;
+  }
+
+  const form = document.getElementById("entry-form");
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const date = document.getElementById("date").value;
+    const eventDesc = document.getElementById("event").value;
+    const revenue = parseFloat(document.getElementById("revenue").value);
+
+    if (date && eventDesc && revenue) {
+      data.push({ date, eventDesc, revenue });
+      updateChart(); // Update the chart with new data
+      updateInsights();
+      await updateForecast(); // Trigger AI prediction
     }
+  });
 
-    async function updateForecast() {
-      if (data.length < 5) return;
+  function updateInsights() {
+    // Placeholder for insights update logic
+    const totalRevenue = data.reduce((sum, entry) => sum + entry.revenue, 0);
+    const avgRevenue = totalRevenue / data.length || 0;
 
-      const recentEntries = data.slice(-7); // last 5–7 entries
-      const forecastText = await getForecastFromAI(recentEntries);
-
-      // Format the response for better readability
-      const formattedForecast = forecastText
-        .split("\n") // Split the response into lines
-        .map((line) => {
-          if (line.startsWith("**") && line.endsWith("**")) {
-            // If the line starts and ends with **, style it as a box
-            const content = line.slice(2, -2).trim(); // Remove the ** markers
-            return `<div class="styled-box">${content}</div>`;
-          } else if (line.startsWith("*")) {
-            // If the line starts with an asterisk, make it a header
-            return `<h3>${line.slice(1).trim()}</h3>`;
-          } else {
-            // Otherwise, wrap it in a paragraph
-            return `<p>${line.trim()}</p>`;
-          }
-        })
-        .join(""); // Join the formatted lines back into a single string
-
-      // Display the formatted prediction in the UI
-      document.getElementById("predicted-surges").innerHTML = formattedForecast;
-    }
-
-    const form = document.getElementById("entry-form");
-
-    form.addEventListener("submit", async (event) => {
-      event.preventDefault();
-      const date = document.getElementById("date").value;
-      const eventDesc = document.getElementById("event").value;
-      const revenue = parseFloat(document.getElementById("revenue").value);
-
-      if (date && eventDesc && revenue) {
-        data.push({ date, eventDesc, revenue });
-        updateChart(); // Update the chart with new data
-        updateInsights();
-        await updateForecast(); // Trigger AI prediction
-      }
-    });
-
-    function updateInsights() {
-      // Placeholder for insights update logic
-      const totalRevenue = data.reduce((sum, entry) => sum + entry.revenue, 0);
-      const avgRevenue = totalRevenue / data.length || 0;
-
-      document.getElementById("total-revenue").textContent = `$${totalRevenue.toFixed(
-        2
-      )}`;
-      document.getElementById("avg-revenue").textContent = `$${avgRevenue.toFixed(
-        2
-      )}`;
-    }
-
-  </script>
+    document.getElementById("total-revenue").textContent = `$${totalRevenue.toFixed(
+      2
+    )}`;
+    document.getElementById("avg-revenue").textContent = `$${avgRevenue.toFixed(
+      2
+    )}`;
+  }
+</script>
 
 
   
