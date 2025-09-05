@@ -392,12 +392,89 @@
       2
     )}`;
   }
-</script>
+  </script>
 
+  <!-- Google Sheet Import Section -->
+  <div style="max-width: 600px; margin: 20px auto; background: rgba(0,0,0,0.8); padding: 20px; border-radius: 10px; box-shadow: 0 10px 30px rgba(0, 230, 255, 0.2);">
+    <h3 style="color: #00e6ff; text-align: center;">Import Data from Google Sheet</h3>
+    <label for="google-sheet-url" style="color: #f0f0f0; font-weight: bold;">Google Sheet URL (must be shared publicly):</label>
+    <input type="text" id="google-sheet-url" placeholder="Enter Google Sheet URL" style="width: 100%; padding: 10px; margin: 10px 0; border-radius: 5px; border: none; background: #1e1e1e; color: #f0f0f0;">
+    <button id="import-sheet-btn" style="padding: 10px 25px; background-color: #00e6ff; border-radius: 30px; font-weight: bold; color: #0a0a0a; border: none; cursor: pointer; transition: background-color 0.3s ease, transform 0.3s ease;">Import Sheet</button>
+    <p id="import-status" style="color: #00e6ff; margin-top: 10px;"></p>
+  </div>
 
-  
+  <script>
+    // Function to extract Google Sheet ID from URL
+    function extractSheetId(url) {
+      const regex = /\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/;
+      const match = url.match(regex);
+      return match ? match[1] : null;
+    }
 
-  
+    // Function to fetch and parse CSV from Google Sheet
+    async function importGoogleSheet() {
+      const urlInput = document.getElementById('google-sheet-url').value.trim();
+      const statusEl = document.getElementById('import-status');
+      statusEl.textContent = '';
+
+      const sheetId = extractSheetId(urlInput);
+      if (!sheetId) {
+        statusEl.textContent = 'Invalid Google Sheet URL.';
+        return;
+      }
+
+      // Construct CSV export URL for first sheet (gid=0)
+      const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=0`;
+
+      try {
+        const response = await fetch(csvUrl);
+        if (!response.ok) {
+          statusEl.textContent = `Failed to fetch sheet: ${response.statusText}`;
+          return;
+        }
+        const csvText = await response.text();
+
+        // Parse CSV text
+        const rows = csvText.trim().split('\n').map(row => row.split(','));
+        // Expecting header row: Date,Event,Revenue
+        const header = rows[0].map(h => h.trim().toLowerCase());
+        const dateIdx = header.indexOf('date');
+        const eventIdx = header.indexOf('event');
+        const revenueIdx = header.indexOf('revenue');
+
+        if (dateIdx === -1 || eventIdx === -1 || revenueIdx === -1) {
+          statusEl.textContent = 'Sheet must have headers: Date, Event, Revenue';
+          return;
+        }
+
+        // Clear existing data
+        data.length = 0;
+
+        // Parse rows into data array
+        for (let i = 1; i < rows.length; i++) {
+          const row = rows[i];
+          if (row.length < 3) continue;
+          const date = row[dateIdx].trim();
+          const eventDesc = row[eventIdx].trim();
+          const revenue = parseFloat(row[revenueIdx].trim());
+          if (date && eventDesc && !isNaN(revenue)) {
+            data.push({ date, eventDesc, revenue });
+          }
+        }
+
+        updateChart();
+        updateInsights();
+        await updateForecast();
+
+        statusEl.textContent = `Imported ${data.length} entries successfully.`;
+      } catch (error) {
+        statusEl.textContent = 'Error importing sheet.';
+        console.error('Error importing Google Sheet:', error);
+      }
+    }
+
+    document.getElementById('import-sheet-btn').addEventListener('click', importGoogleSheet);
+  </script>
 
   <!-- Footer -->
   <footer>
